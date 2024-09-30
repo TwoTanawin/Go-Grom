@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v4"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -22,6 +23,27 @@ const (
 	password = "password"   // From environment POSTGRES_PASSWORD
 	dbname   = "mydatabase" // From environment POSTGRES_DB
 )
+
+func authRequired(c *fiber.Ctx) error {
+	cookie := c.Cookies("jwt")
+	jwtSecret := "TestSecret"
+	// Parse the token
+	token, err := jwt.ParseWithClaims(cookie, &jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
+		// since we only use the one private key to sign the tokens,
+		// we also only use its public counter part to verify
+		return []byte(jwtSecret), nil
+	})
+
+	if err != nil || !token.Valid {
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+
+	claim := token.Claims.(*jwt.MapClaims)
+
+	fmt.Println(claim)
+
+	return c.Next()
+}
 
 func main() {
 	// Configure your PostgreSQL database details here
@@ -50,11 +72,13 @@ func main() {
 	// Output for verification
 	fmt.Println(db)
 	// db.Migrator().DropColumn(&Book{}, "publisher")
-	db.AutoMigrate(&Book{})
+	db.AutoMigrate(&Book{}, &User{})
 	fmt.Println("Migrate successful!")
 
 	//Setup Fiber
 	app := fiber.New()
+
+	app.Use("/books", authRequired)
 
 	app.Get("/books", func(c *fiber.Ctx) error {
 		return c.JSON(getBooks(db))
@@ -127,6 +151,51 @@ func main() {
 
 		return c.JSON(fiber.Map{
 			"message": "Delete Book Successful!",
+		})
+	})
+
+	//User API
+	app.Post("/register", func(c *fiber.Ctx) error {
+		user := new(User)
+
+		if err := c.BodyParser(user); err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		err := createUser(db, user)
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		return c.JSON(fiber.Map{
+			"message": "Create User Successful!",
+		})
+
+	})
+
+	app.Post("/login", func(c *fiber.Ctx) error {
+		user := new(User)
+
+		if err := c.BodyParser(user); err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		token, err := loginUser(db, user)
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusUnauthorized)
+		}
+
+		c.Cookie(&fiber.Cookie{
+			Name:     "jwt",
+			Value:    token,
+			Expires:  time.Now().Add(time.Hour * 72),
+			HTTPOnly: true,
+		})
+
+		return c.JSON(fiber.Map{
+			"token": "Login Successful!",
 		})
 	})
 
