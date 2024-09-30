@@ -1,0 +1,26 @@
+services:
+  go_grom_app_db:
+    image: postgres:latest
+    container_name: go_grom_app_db
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=mydatabase  # Create the database
+    ports:
+      - "5433:5432"
+
+  go_grom_app_pgadmin:
+    image: dpage/pgadmin4
+    container_name: go_grom_app_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "8081:80"
+    depends_on:
+      - go_grom_app_db
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  pgadmin_data:

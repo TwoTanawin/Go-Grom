@@ -1,0 +1,85 @@
+package main
+
+import (
+	"log"
+
+	"gorm.io/gorm"
+
+	"fmt"
+)
+
+type Book struct {
+	gorm.Model
+	Name  string
+	Autor string
+	// Publisher   string
+	Description string
+	Price       uint
+}
+
+func createBook(db *gorm.DB, book *Book) {
+	result := db.Create(&book)
+
+	if result.Error != nil {
+		log.Fatal("Error creating book: %v", result.Error)
+	}
+
+	fmt.Println("Create Book Successful!")
+}
+
+func getBook(db *gorm.DB, id uint) *Book {
+	var book Book
+	result := db.First(&book, id)
+
+	if result.Error != nil {
+		log.Fatal("Error geting book: %v", result.Error)
+	}
+
+	return &book
+}
+
+func updateBook(db *gorm.DB, book *Book) {
+	result := db.Save(&book)
+
+	if result.Error != nil {
+		log.Fatal("Error saving book: %v", result.Error)
+	}
+
+	fmt.Println("Update Book Successful!")
+
+}
+
+func deleteBook(db *gorm.DB, id uint) {
+	var book Book
+	result := db.Delete(&book, id)
+
+	if result.Error != nil {
+		log.Fatal("Error Delete book: %v", result.Error)
+	}
+
+	fmt.Println("Delete Book Successful!")
+}
+
+func searchBook(db *gorm.DB, bookName string) *Book {
+	var book Book
+
+	result := db.Where("name = ?", bookName).First(&book)
+
+	if result.Error != nil {
+		log.Fatal("Error Search book: %v", result.Error)
+	}
+
+	return &book
+}
+
+func searchBooks(db *gorm.DB, bookName string) []Book {
+	var books []Book
+
+	result := db.Where("name = ?", bookName).Order("price").Find(&books)
+
+	if result.Error != nil {
+		log.Fatal("Error Search book: %v", result.Error)
+	}
+
+	return books
+}
