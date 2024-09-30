@@ -7,6 +7,9 @@ import (
 	"os"
 	"time"
 
+	"strconv"
+
+	"github.com/gofiber/fiber/v2"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -50,33 +53,83 @@ func main() {
 	db.AutoMigrate(&Book{})
 	fmt.Println("Migrate successful!")
 
-	// newBook := &Book{
-	// 	Name:        "ML Engineer",
-	// 	Autor:       "Two",
-	// 	Description: "Test",
-	// 	Price:       500,
-	// }
+	//Setup Fiber
+	app := fiber.New()
 
-	// createBook(db, newBook)
+	app.Get("/books", func(c *fiber.Ctx) error {
+		return c.JSON(getBooks(db))
+	})
 
-	currentBook := getBook(db, 5)
+	app.Get("/books/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.Atoi(c.Params("id"))
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+		book := getBook(db, id)
 
-	fmt.Println(currentBook)
+		return c.JSON(book)
+	})
 
-	currentBook.Name = "New DL book"
-	currentBook.Price = 6000
+	app.Post("/books", func(c *fiber.Ctx) error {
+		book := new(Book)
 
-	updateBook(db, currentBook)
+		if err := c.BodyParser(book); err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
 
-	// deleteBook(db, 1)
+		err := createBook(db, book)
 
-	// currentBook = searchBook(db, "ML Engineer")
-	// fmt.Println(currentBook)
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
 
-	currentBooks := searchBooks(db, "ML Engineer")
-	// fmt.Println(currentBooks)
-	for _, book := range currentBooks {
-		fmt.Println(book.ID, book.Name, book.Autor, book.Description, book.Price)
-	}
+		return c.JSON(fiber.Map{
+			"message": "Create Book Successful!",
+		})
+	})
+
+	app.Put("/books/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.Atoi(c.Params("id"))
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		book := new(Book)
+
+		if err := c.BodyParser(book); err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		book.ID = uint(id)
+
+		err = updateBook(db, book)
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		return c.JSON(fiber.Map{
+			"message": "Update Book Successful!",
+		})
+
+	})
+
+	app.Delete("/books/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.Atoi(c.Params("id"))
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		err = deleteBook(db, id)
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		return c.JSON(fiber.Map{
+			"message": "Delete Book Successful!",
+		})
+	})
+
+	app.Listen(":8082")
 
 }

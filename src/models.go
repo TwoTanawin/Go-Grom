@@ -4,30 +4,29 @@ import (
 	"log"
 
 	"gorm.io/gorm"
-
-	"fmt"
 )
 
 type Book struct {
 	gorm.Model
-	Name  string
-	Autor string
+	Name  string `json:"name"`
+	Autor string `json:"authen"`
 	// Publisher   string
-	Description string
-	Price       uint
+	Description string `json:"description"`
+	Price       uint   `json:"price"`
 }
 
-func createBook(db *gorm.DB, book *Book) {
+func createBook(db *gorm.DB, book *Book) error {
 	result := db.Create(&book)
 
 	if result.Error != nil {
-		log.Fatal("Error creating book: %v", result.Error)
+		return result.Error
 	}
 
-	fmt.Println("Create Book Successful!")
+	// fmt.Println("Create Book Successful!")
+	return nil
 }
 
-func getBook(db *gorm.DB, id uint) *Book {
+func getBook(db *gorm.DB, id int) *Book {
 	var book Book
 	result := db.First(&book, id)
 
@@ -38,26 +37,39 @@ func getBook(db *gorm.DB, id uint) *Book {
 	return &book
 }
 
-func updateBook(db *gorm.DB, book *Book) {
-	result := db.Save(&book)
+func getBooks(db *gorm.DB) []Book {
+	var books []Book
+	result := db.Find(&books)
 
 	if result.Error != nil {
-		log.Fatal("Error saving book: %v", result.Error)
+		log.Fatal("Error geting books: %v", result.Error)
 	}
 
-	fmt.Println("Update Book Successful!")
+	return books
+}
+
+func updateBook(db *gorm.DB, book *Book) error {
+	result := db.Model(&book).Updates(book)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	// fmt.Println("Update Book Successful!")
+	return nil
 
 }
 
-func deleteBook(db *gorm.DB, id uint) {
+func deleteBook(db *gorm.DB, id int) error {
 	var book Book
 	result := db.Delete(&book, id)
 
 	if result.Error != nil {
-		log.Fatal("Error Delete book: %v", result.Error)
+		return result.Error
 	}
 
-	fmt.Println("Delete Book Successful!")
+	// fmt.Println("Delete Book Successful!")
+	return nil
 }
 
 func searchBook(db *gorm.DB, bookName string) *Book {
